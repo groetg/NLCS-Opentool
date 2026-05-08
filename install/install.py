@@ -31,9 +31,22 @@ def get_bricscad_support_dir() -> str:
             versions = [d for d in os.listdir(bricscad_path) if d.startswith("V")]
             if versions:
                 latest = sorted(versions, reverse=True)[0]
-                support = os.path.join(bricscad_path, latest, "Support")
+                version_path = os.path.join(bricscad_path, latest)
+                # Support is inside locale folder (en_US, nl_NL, etc.)
+                for subdir in os.listdir(version_path):
+                    support = os.path.join(version_path, subdir, "Support")
+                    if os.path.exists(support):
+                        print(f"  Gevonden: Bricsys\\BricsCAD\\{latest}\\{subdir}\\Support")
+                        return support
+                # Fallback: try en_US directly
+                support = os.path.join(version_path, "en_US", "Support")
                 if os.path.exists(support):
-                    print(f"  Gevonden: Bricsys\\BricsCAD\\{latest}")
+                    print(f"  Gevonden: Bricsys\\BricsCAD\\{latest}\\en_US\\Support")
+                    return support
+                # Fallback: try locale-neutral location
+                support = os.path.join(version_path, "Support")
+                if os.path.exists(support):
+                    print(f"  Gevonden: Bricsys\\BricsCAD\\{latest}\\Support")
                     return support
         
         # Try old BricsCAD path (v24 en lager)
