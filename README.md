@@ -44,14 +44,26 @@ Ondersteunde NLCS hoofdgroepen:
 
 ## Installatie
 
-1. Download de nieuwste release van https://github.com/groetg/NLCS-Opentool
-2. Pak uit naar een permanente locatie (bijv. `C:\Program Files\NLCS-Opentool`)
-3. Start BricsCAD
-4. Typ `APPLOAD` in de command line → Load Application dialoog verschijnt
-5. Klik **Add** → selecteer `src\__init__.py` of `install\install.py`
-6. Herstart BricsCAD (of gebruik `NETLOAD` voor .dll als dat van toepassing is)
+### Automatisch (aanbevolen)
 
-Of via de installatieknop in de plugin UI.
+1. Download de nieuwste release of clone de repo:
+   ```bash
+   git clone --recurse-submodules https://github.com/groetg/NLCS-Opentool.git
+   ```
+2. Dubbelklik `install/install.py` in Windows Verkenner
+   - Of: Right-click → "Openen met" → Python
+3. Python 3.7+ moet geïnstalleerd zijn op je Windows machine
+
+Dit installeert alle NLCS resources naar je BricsCAD support directory.
+
+### Handmatig via BricsCAD (voor developers)
+
+Na de automatische installatie:
+
+1. Start BricsCAD opnieuw op
+2. Typ `APPLOAD` in de command line
+3. Klik **Add** → selecteer `src\__init__.py`
+4. Herstart BricsCAD
 
 ## Gebruik
 
