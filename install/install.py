@@ -23,26 +23,29 @@ def get_bricscad_support_dir() -> str:
     
     if system == "Windows":
         appdata = os.environ.get("APPDATA", os.path.expanduser("~/AppData/Roaming"))
-        home = os.path.expanduser("~")
         
-        # Try common BricsCAD versions
-        versions = ["BricsCAD_v25", "BricsCAD_v24", "BricsCAD_v23", "BricsCAD"]
-        for v in versions:
+        # Try Bricsys path (BricsCAD 25+)
+        bricscad_path = os.path.join(appdata, "Bricsys", "BricsCAD")
+        if os.path.exists(bricscad_path):
+            # Find all versions (V25x64, V26x64, etc.)
+            versions = [d for d in os.listdir(bricscad_path) if d.startswith("V")]
+            if versions:
+                latest = sorted(versions, reverse=True)[0]
+                support = os.path.join(bricscad_path, latest, "Support")
+                if os.path.exists(support):
+                    print(f"  Gevonden: Bricsys\\BricsCAD\\{latest}")
+                    return support
+        
+        # Try old BricsCAD path (v24 en lager)
+        versions_old = ["BricsCAD_v25", "BricsCAD_v24", "BricsCAD_v23", "BricsCAD"]
+        for v in versions_old:
             path = os.path.join(appdata, v, "Support")
             if os.path.exists(path):
                 print(f"  Gevonden: {v}")
                 return path
         
-        # Fallback to latest version we can find
-        common = os.path.join(appdata, "BricsCAD")
-        if os.path.exists(common):
-            subdirs = [d for d in os.listdir(common) if d.startswith("BricsCAD_v")]
-            if subdirs:
-                latest = sorted(subdirs)[-1]
-                return os.path.join(common, latest, "Support")
-        
-        # Last resort
-        return os.path.join(appdata, "BricsCAD", "BricsCAD_v24", "Support")
+        # Fallback: als geen van beide werkt, vraag gebruiker
+        return ""
     
     elif system == "Linux":
         home = os.path.expanduser("~")
