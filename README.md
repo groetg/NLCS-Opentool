@@ -1,4 +1,4 @@
-# NLCS Opentool for BricsCAD
+# NLCS Opentool for BricsCAD op Linux
 
 BricsCAD plugin om te werken volgens de **Nederlandse CAD Standaard (NLCS) versie 5.0**.
 
