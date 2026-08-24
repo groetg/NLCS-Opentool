@@ -111,8 +111,8 @@ def generate_lisp(nlcs_base: str, output_path: str):
     lines.append("; NLCS Opentool - Auto-generated layer data")
     lines.append("; Do NOT edit manually - regenerate with nlcs_generate_lisp.py")
     lines.append("")
-    lines.append("(defvar *nlcs-layers* (list))")
-    lines.append("(defvar *nlcs-disciplines* (list))")
+    lines.append("(setq *nlcs-layers* (list))")
+    lines.append("(setq *nlcs-disciplines* (list))")
     lines.append("")
     
     # Generate discipline list

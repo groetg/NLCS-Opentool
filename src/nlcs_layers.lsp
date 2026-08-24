@@ -1,8 +1,8 @@
 ; NLCS Opentool - Auto-generated layer data
 ; Do NOT edit manually - regenerate with nlcs_generate_lisp.py
 
-(defvar *nlcs-layers* (list))
-(defvar *nlcs-disciplines* (list))
+(setq *nlcs-layers* (list))
+(setq *nlcs-disciplines* (list))
 
 ; Discipline definitions
 (setq *nlcs-disciplines* (list
