@@ -190,7 +190,9 @@
   )
   (end_list)
   (set_tile "layer_list" "0")
-  (if (> (length children) 0) (nlcs_on_layer_selected))
+  ; Only display the first item's properties. Do not invoke the selection
+  ; callback here: doing so recursively opened every child level.
+  (if (> (length children) 0) (nlcs_set_layer_fields (car children)))
 )
 
 ; Get layer names from the generated NLCS data.
