@@ -49,6 +49,7 @@
   (action_tile "status_new" "(nlcs_set_status \"Nieuw\")")
   (action_tile "status_delete" "(nlcs_set_status \"Verwijderen\")")
   (action_tile "status_temporary" "(nlcs_set_status \"Tijdelijk\")")
+  (action_tile "status_revision" "(nlcs_set_status \"Revisie\")")
   (action_tile "btn_create" "(nlcs_create_layer)")
   (action_tile "btn_draw" "(nlcs_start_drawing)")
   (action_tile "btn_settings" "(done_dialog 2)")
@@ -148,28 +149,48 @@
     (add_list (cdr disc))
   )
   (end_list)
+  (setq *nlcs-parent-stack* (list))
   (nlcs_on_discipline_changed)
 )
 
 ; Called when discipline selection changes
-(defun nlcs_on_discipline_changed ( / sel_index disc_code data layer)
+(defun nlcs_on_discipline_changed ( / sel_index disc_code)
   (setq sel_index (fix (atof (get_tile "discipline_list"))))
   (setq disc_code (nth sel_index *nlcs-discipline-codes*))
-  
-  ; Load layers for this discipline from CSV
   (if disc_code
     (progn
       (setq *nlcs-current-code* disc_code)
-      (start_list "layer_list")
-      (setq data (assoc disc_code *nlcs-layers*))
-      (if data
-        (foreach layer (nth 2 data) (add_list (nth 1 layer)))
-      )
-      (end_list)
-      (set_tile "layer_list" "0")
-      (nlcs_on_layer_selected)
+      (setq *nlcs-parent-stack* (list))
+      (setq *nlcs-current-parent* "")
+      (nlcs_show_children "")
     )
   )
+)
+
+(defun nlcs_show_children (parent / data layer children has_children label candidate)
+  (setq data (assoc *nlcs-current-code* *nlcs-layers*))
+  (setq children (list))
+  (if data
+    (foreach layer (nth 2 data)
+      (if (= (nth 5 layer) parent)
+        (setq children (append children (list layer)))
+      )
+    )
+  )
+  (setq *nlcs-current-items* children)
+  (start_list "layer_list")
+  (if (> (length *nlcs-parent-stack*) 0) (add_list "<-- Terug"))
+  (foreach layer children
+    (setq has_children nil)
+    (foreach candidate (nth 2 data)
+      (if (= (nth 5 candidate) (nth 0 layer)) (setq has_children T))
+    )
+    (setq label (if has_children "+ " "  "))
+    (add_list (strcat label (nth 1 layer)))
+  )
+  (end_list)
+  (set_tile "layer_list" "0")
+  (if (> (length children) 0) (nlcs_on_layer_selected))
 )
 
 ; Get layer names from the generated NLCS data.
@@ -189,22 +210,68 @@
 )
 
 (defun nlcs_set_status (status)
+  (setq *nlcs-status-prefix*
+    (cond
+      ((= status "Bestaand") "B-")
+      ((= status "Nieuw") "N-")
+      ((= status "Verwijderen") "V-")
+      ((= status "Tijdelijk") "T-")
+      ((= status "Revisie") "R-")
+      (T "N-")
+    )
+  )
   (set_tile "status_text" status)
+  (if *nlcs-current-layer* (nlcs_set_layer_fields *nlcs-current-layer*))
 )
 
 (defun nlcs_on_layer_selected ( / index data layer)
   (setq index (fix (atof (get_tile "layer_list"))))
-  (setq data (assoc *nlcs-current-code* *nlcs-layers*))
-  (if (and data (>= index 0) (< index (length (nth 2 data))))
+  (if (and (> (length *nlcs-parent-stack*) 0) (= index 0))
     (progn
-      (setq layer (nth index (nth 2 data)))
-      (set_tile "layer_name_edit" (nth 1 layer))
-      (set_tile "layer_properties"
-        (strcat "Kleur: " (itoa (nth 2 layer))
-                "  Lijngewicht: " (rtos (nth 3 layer) 2 2)
-                "  Lijntype: " (nth 4 layer)))
+      (setq *nlcs-current-parent* (car *nlcs-parent-stack*))
+      (setq *nlcs-parent-stack* (cdr *nlcs-parent-stack*))
+      (nlcs_show_children *nlcs-current-parent*)
+    )
+    (progn
+      (if (> (length *nlcs-parent-stack*) 0) (setq index (1- index)))
+      (setq layer (nth index *nlcs-current-items*))
+      (if layer
+        (progn
+          (if (nlcs_has_children (nth 0 layer))
+            (progn
+              (setq *nlcs-parent-stack* (cons (if *nlcs-current-parent* *nlcs-current-parent* "") *nlcs-parent-stack*))
+              (setq *nlcs-current-parent* (nth 0 layer))
+              (nlcs_show_children *nlcs-current-parent*)
+            )
+            (nlcs_set_layer_fields layer)
+          )
+        )
+      )
     )
   )
+)
+
+(defun nlcs_has_children (id / data result candidate)
+  (setq result nil)
+  (setq data (assoc *nlcs-current-code* *nlcs-layers*))
+  (if data
+    (foreach candidate (nth 2 data)
+      (if (= (nth 5 candidate) id) (setq result T))
+    )
+  )
+  result
+)
+
+(defun nlcs_set_layer_fields (layer)
+  (setq *nlcs-current-layer* layer)
+  (set_tile "layer_name_edit" (nlcs_status_name (nth 1 layer)))
+  (set_tile "layer_color_edit" (itoa (nth 2 layer)))
+  (set_tile "layer_weight_edit" (rtos (nth 3 layer) 2 2))
+  (set_tile "layer_type_edit" (nth 4 layer))
+)
+
+(defun nlcs_status_name (name)
+  (strcat (if *nlcs-status-prefix* *nlcs-status-prefix* "N-") name)
 )
 
 ; Legacy example mapping retained for compatibility with older drawings.
@@ -277,23 +344,24 @@
 )
 
 ; Create the selected layer in BricsCAD
-(defun nlcs_create_layer ( / sel_index disc_code layer_name)
+(defun nlcs_create_layer ( / layer_name color weight linetype)
   (princ "\n[NLCS] Laag aanmaken...")
-  
-  ; Get selected discipline
-  (setq sel_index (fix (atof (get_tile "discipline_list"))))
-  
-  ; Get layer name from layer list
   (setq layer_name (get_tile "layer_name_edit"))
+  (setq color (get_tile "layer_color_edit"))
+  (setq weight (get_tile "layer_weight_edit"))
+  (setq linetype (get_tile "layer_type_edit"))
   
   (if (= layer_name "")
     (progn
       (alert "Geef een laagnaam op of selecteer een laag uit de lijst.")
     )
     (progn
-      ; Create layer with NLCS naming convention
-      (command ".-LAYER" "MAKE" layer_name "COLOR" "7" "")
+      ; Create the layer with editable NLCS properties and make it current.
+      (command "_.-LAYER" "_M" layer_name "_C" color layer_name
+               "_LW" weight layer_name "_LT" linetype layer_name "")
+      (setvar "CLAYER" layer_name)
       (princ (strcat "\n[NLCS] Laag aangemaakt: " layer_name "\n"))
+      (done_dialog 1)
     )
   )
 )

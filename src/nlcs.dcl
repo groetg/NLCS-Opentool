@@ -10,6 +10,7 @@ nlcs_main : dialog {
       : radio_button { key = "status_new"; label = "Nieuw"; value = "1"; }
       : radio_button { key = "status_delete"; label = "Verwijderen"; }
       : radio_button { key = "status_temporary"; label = "Tijdelijk"; }
+      : radio_button { key = "status_revision"; label = "Revisie"; }
       spacer;
       : text { key = "status_text"; label = "Kies een discipline"; width = 18; }
     }
@@ -40,7 +41,9 @@ nlcs_main : dialog {
   : boxed_column {
     label = "Eigenschappen";
     : edit_box { key = "layer_name_edit"; label = "Laagnaam:"; width = 55; }
-    : text { key = "layer_properties"; label = "Selecteer een laag voor eigenschappen"; width = 55; }
+    : edit_box { key = "layer_color_edit"; label = "Kleur (ACI):"; width = 12; }
+    : edit_box { key = "layer_weight_edit"; label = "Lijngewicht (mm):"; width = 12; }
+    : edit_box { key = "layer_type_edit"; label = "Lijntype:"; width = 30; }
   }
   spacer;
   : row {
