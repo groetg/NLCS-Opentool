@@ -1,13 +1,18 @@
 ; NLCS Opentool - Main LISP Entry Point
 ; Load via APPLOAD or: (load ".../NLCS-Opentool/nlcs_main.lsp")
 
-; Resolve files relative to this file so Windows and Linux use the same code.
-(setq *nlcs-home*
-  (if (findfile "nlcs_main.lsp")
-    (vl-filename-directory (findfile "nlcs_main.lsp"))
-    ""
+; Resolve files relative to the loaded file, also when APPLOAD used an
+; absolute path that is not part of BricsCAD's support path.
+(defun nlcs_find_home ( / loaded file home )
+  (setq loaded (vl-list-loaded-lisp))
+  (foreach file loaded
+    (if (= (strcase (vl-filename-base file)) "NLCS_MAIN")
+      (setq home (vl-filename-directory file))
+    )
   )
+  (if home home "")
 )
+(setq *nlcs-home* (nlcs_find_home))
 (if (/= *nlcs-home* "")
   (progn
     (load (strcat *nlcs-home* "/nlcs_layers.lsp"))
