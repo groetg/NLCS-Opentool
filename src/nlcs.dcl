@@ -1,84 +1,52 @@
-// NLCS Opentool DCL Dialog Definition
-// Build with BricsCAD's native DCL (Dialog Control Language)
+// NLCS Opentool - graphical layer selector
 
 nlcs_main : dialog {
-  label = "NLCS Opentool - Laag Selectie";
-  
-  : text {
-    label = "Selecteer een NLCS discipline en laag om mee te werken";
-    alignment = centered;
-  }
-  
-  spacer;
-  
-  // Two-column layout: disciplines on left, layers on right
-  : boxed_column {
-    label = "1. Kies Discipline";
-    width = 20;
-    height = 25;
-    
-    : list_box {
-      key = "discipline_list";
-      label = "Disciplines";
+  label = "NLCS Opentool - Laag kiezen";
+  : row {
+    : boxed_column {
+      label = "Status";
       width = 18;
-      height = 20;
-      value = "0";
+      : radio_button { key = "status_existing"; label = "Bestaand"; }
+      : radio_button { key = "status_new"; label = "Nieuw"; value = "1"; }
+      : radio_button { key = "status_delete"; label = "Verwijderen"; }
+      : radio_button { key = "status_temporary"; label = "Tijdelijk"; }
+      spacer;
+      : text { key = "status_text"; label = "Kies een discipline"; width = 18; }
+    }
+    : boxed_column {
+      label = "1. Discipline";
+      width = 28;
+      : list_box {
+        key = "discipline_list";
+        width = 26;
+        height = 24;
+        fixed_width = true;
+        value = "0";
+      }
+    }
+    : boxed_column {
+      label = "2. NLCS-laag";
+      width = 42;
+      : list_box {
+        key = "layer_list";
+        width = 40;
+        height = 24;
+        fixed_width = true;
+        value = "0";
+      }
     }
   }
-  
-  : boxed_column {
-    label = "2. Kies Laag";
-    width = 25;
-    height = 25;
-    
-    : list_box {
-      key = "layer_list";
-      label = "Lagen";
-      width = 23;
-      height = 20;
-      value = "0";
-    }
-  }
-  
   spacer;
-  
-  // Layer name input
   : boxed_column {
-    label = "3. Laagnaam (handmatig)";
-    : edit_box {
-      key = "layer_name_edit";
-      label = "Laagnaam:";
-      width = 30;
-      value = "";
-    }
+    label = "Eigenschappen";
+    : edit_box { key = "layer_name_edit"; label = "Laagnaam:"; width = 55; }
+    : text { key = "layer_properties"; label = "Selecteer een laag voor eigenschappen"; width = 55; }
   }
-  
   spacer;
-  
-  // Buttons
   : row {
     alignment = centered;
-    : button {
-      key = "btn_create";
-      label = "Maak Laag";
-      is_enabled = true;
-    }
-    : button {
-      key = "btn_draw";
-      label = "Teken mee";
-      is_enabled = false; // enable when layer is set
-    }
-    : button {
-      key = "btn_cancel";
-      label = "Sluiten";
-      is_cancel = true;
-    }
-  }
-  
-  // Status line
-  : text {
-    key = "status_text";
-    label = "Klaar";
-    alignment = left;
+    : button { key = "btn_create"; label = "Laag aanmaken"; is_default = true; }
+    : button { key = "btn_draw"; label = "Tekenen"; is_enabled = false; }
+    : button { key = "btn_cancel"; label = "Sluiten"; is_cancel = true; }
   }
 }

@@ -16,7 +16,13 @@
 
 (defun C:NLCS ( / )
   ; Show main NLCS dialog
-  (load_dialog (strcat *nlcs-home* "/nlcs.dcl"))
+  (setq dcl_id (load_dialog (strcat *nlcs-home* "/nlcs.dcl")))
+  (if (< dcl_id 0)
+    (progn
+      (alert "NLCS: dialoogbestand niet gevonden.")
+      (exit)
+    )
+  )
   (if (not (new_dialog "nlcs_main" dcl_id))
     (progn
       (alert "Kon NLCS dialoog niet laden.")
@@ -28,12 +34,16 @@
   (nlcs_init_layer_list)
   
   ; Setup callbacks
-  (set_tile "discipline_list" "")
-  (set_tile "layer_list" "")
+  (set_tile "discipline_list" "0")
+  (set_tile "layer_list" "0")
   
   ; Action callbacks
   (action_tile "discipline_list" "(nlcs_on_discipline_changed)")
   (action_tile "layer_list" "(nlcs_on_layer_selected)")
+  (action_tile "status_existing" "(nlcs_set_status \"Bestaand\")")
+  (action_tile "status_new" "(nlcs_set_status \"Nieuw\")")
+  (action_tile "status_delete" "(nlcs_set_status \"Verwijderen\")")
+  (action_tile "status_temporary" "(nlcs_set_status \"Tijdelijk\")")
   (action_tile "btn_create" "(nlcs_create_layer)")
   (action_tile "btn_draw" "(nlcs_start_drawing)")
   (action_tile "btn_cancel" "(done_dialog 0)")
@@ -81,77 +91,32 @@
     )
   )
   
-  ; Build list string for DCL list_box
-  (setq disc_list_str "")
+  (setq *nlcs-discipline-codes* (mapcar 'car disciplines))
+  (start_list "discipline_list")
   (foreach disc disciplines
-    (setq disc_list_str (strcat disc_list_str (cdr disc) "\n"))
+    (add_list (cdr disc))
   )
-  (setq disc_list_str (substr disc_list_str 1 (- (strlen disc_list_str) 1))) ; remove last newline
-  
-  (set_tile "discipline_list" disc_list_str)
+  (end_list)
+  (nlcs_on_discipline_changed)
 )
 
 ; Called when discipline selection changes
-(defun nlcs_on_discipline_changed ( / sel_index layers_csv csv_data lines layer_list_str)
+(defun nlcs_on_discipline_changed ( / sel_index disc_code data layer)
   (setq sel_index (fix (atof (get_tile "discipline_list"))))
-  
-  ; Get discipline code
-  (cond
-    ((= sel_index 0) (setq disc_code "AL"))
-    ((= sel_index 1) (setq disc_code "AM"))
-    ((= sel_index 2) (setq disc_code "BC"))
-    ((= sel_index 3) (setq disc_code "BV"))
-    ((= sel_index 4) (setq disc_code "FC"))
-    ((= sel_index 5) (setq disc_code "FV"))
-    ((= sel_index 6) (setq disc_code "GC"))
-    ((= sel_index 7) (setq disc_code "GK"))
-    ((= sel_index 8) (setq disc_code "GR"))
-    ((= sel_index 9) (setq disc_code "GW"))
-    ((= sel_index 10) (setq disc_code "HU"))
-    ((= sel_index 11) (setq disc_code "IE"))
-    ((= sel_index 12) (setq disc_code "IV"))
-    ((= sel_index 13) (setq disc_code "IW"))
-    ((= sel_index 14) (setq disc_code "KC"))
-    ((= sel_index 15) (setq disc_code "KG"))
-    ((= sel_index 16) (setq disc_code "KL"))
-    ((= sel_index 17) (setq disc_code "KW"))
-    ((= sel_index 18) (setq disc_code "MC"))
-    ((= sel_index 19) (setq disc_code "MO"))
-    ((= sel_index 20) (setq disc_code "MW"))
-    ((= sel_index 21) (setq disc_code "OB"))
-    ((= sel_index 22) (setq disc_code "OG"))
-    ((= sel_index 23) (setq disc_code "OV"))
-    ((= sel_index 24) (setq disc_code "RI"))
-    ((= sel_index 25) (setq disc_code "SC"))
-    ((= sel_index 26) (setq disc_code "VH"))
-    ((= sel_index 27) (setq disc_code "VV"))
-    ((= sel_index 28) (setq disc_code "VW"))
-    ((= sel_index 29) (setq disc_code "WH"))
-    ((= sel_index 30) (setq disc_code "ZZ"))
-    (t (setq disc_code ""))
-  )
+  (setq disc_code (nth sel_index *nlcs-discipline-codes*))
   
   ; Load layers for this discipline from CSV
-  (if (/= disc_code "")
+  (if disc_code
     (progn
-      (setq csv_path (strcat "C:/Users/micro/NLCS-Opentool/data/nlcs/tabellen/publicatie/objectentabellen-verkort/5.02-Objectentabel-" disc_code ".csv"))
-      (if (findfile csv_path)
-        (progn
-          ; Read and parse CSV - for now, show discipline name as proxy
-          ; Full CSV parsing done via Python
-          (princ (strcat "\n[NLCS] Laden: " disc_code "\n"))
-          
-          ; For demo: show a few example layer names
-          (set_tile "layer_list" 
-            (strcat 
-               (nlcs_get_generated_layers_for_disc disc_code)
-            )
-          )
-        )
-        (progn
-          (set_tile "layer_list" "Geen data beschikbaar\n Controleer NLCS installatie")
-        )
+      (setq *nlcs-current-code* disc_code)
+      (start_list "layer_list")
+      (setq data (assoc disc_code *nlcs-layers*))
+      (if data
+        (foreach layer (nth 2 data) (add_list (nth 1 layer)))
       )
+      (end_list)
+      (set_tile "layer_list" "0")
+      (nlcs_on_layer_selected)
     )
   )
 )
@@ -169,6 +134,25 @@
       result
     )
     "GEEN_LAGEN_BESCHIKBAAR"
+  )
+)
+
+(defun nlcs_set_status (status)
+  (set_tile "status_text" status)
+)
+
+(defun nlcs_on_layer_selected ( / index data layer)
+  (setq index (fix (atof (get_tile "layer_list"))))
+  (setq data (assoc *nlcs-current-code* *nlcs-layers*))
+  (if (and data (>= index 0) (< index (length (nth 2 data))))
+    (progn
+      (setq layer (nth index (nth 2 data)))
+      (set_tile "layer_name_edit" (nth 1 layer))
+      (set_tile "layer_properties"
+        (strcat "Kleur: " (itoa (nth 2 layer))
+                "  Lijngewicht: " (rtos (nth 3 layer) 2 2)
+                "  Lijntype: " (nth 4 layer)))
+    )
   )
 )
 
@@ -237,16 +221,6 @@
     (progn
       (princ (strcat "\n[NLCS] Discipline " disc_code " heeft geen voorgedefinieerde voorbeeldlagen\n"))
       "GEEN_LAGEN_BESCHIKBAAR"
-    )
-  )
-)
-
-; Called when layer is selected in list
-(defun nlcs_on_layer_selected ( / sel_index layer_name)
-  (setq sel_index (fix (atof (get_tile "layer_list"))))
-  (if (> sel_index -1)
-    (progn
-      (princ (strcat "\n[NLCS] Geselecteerd: " (itoa sel_index) "\n"))
     )
   )
 )
