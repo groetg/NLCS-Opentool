@@ -9,10 +9,10 @@ Of als standalone:
 python nlcs_csv.py --discipline VH
 """
 
-import csv
 import os
 import sys
 import argparse
+from pathlib import Path
 
 
 def parse_nlcs_csv(discipline_code: str, nlcs_base: str = None) -> list:
@@ -24,11 +24,11 @@ def parse_nlcs_csv(discipline_code: str, nlcs_base: str = None) -> list:
         script_dir = os.path.dirname(os.path.abspath(__file__))
         nlcs_base = os.path.join(os.path.dirname(script_dir), "data", "nlcs")
     
-    csv_path = os.path.join(
-        nlcs_base,
-        "tabellen", "publicatie", "objectentabellen-verkort",
-        f"5.02-Objectentabel-{discipline_code}.csv"
-    )
+    table_dir = Path(nlcs_base) / "tabellen" / "publicatie" / "objectentabellen-verkort"
+    matches = sorted(table_dir.glob(f"5.02-Objectentabel-{discipline_code}-*.csv"))
+    if not matches:
+        matches = [table_dir / f"5.02-Objectentabel-{discipline_code}.csv"]
+    csv_path = str(matches[0])
     
     if not os.path.exists(csv_path):
         return []
@@ -36,11 +36,9 @@ def parse_nlcs_csv(discipline_code: str, nlcs_base: str = None) -> list:
     objects = []
     try:
         with open(csv_path, "r", encoding="utf-8") as f:
-            # NLCS CSV format: quoted fields with comma separator
-            reader = csv.reader(f, quotechar='"')
-            next(reader)  # skip header row
-            
-            for row in reader:
+            next(f)  # skip header row
+            for line in f:
+                row = _parse_nlcs_row(line)
                 if len(row) < 3:
                     continue
                 try:
@@ -50,8 +48,8 @@ def parse_nlcs_csv(discipline_code: str, nlcs_base: str = None) -> list:
                     
                     # Get layer properties
                     # Format: kl_b=color, lw_b=lineweight, lt_b=linetype
-                    color_idx = row[9].strip() if len(row) > 9 else "7"
-                    lineweight = row[8].strip() if len(row) > 8 else "0.25"
+                    color_idx = row[7].strip() if len(row) > 7 else "7"
+                    lineweight = row[6].strip() if len(row) > 6 else "0.25"
                     linetype = row[12].strip() if len(row) > 12 else "CONTINUOUS"
                     
                     objects.append({
@@ -68,6 +66,18 @@ def parse_nlcs_csv(discipline_code: str, nlcs_base: str = None) -> list:
         print(f"Error parsing {csv_path}: {e}", file=sys.stderr)
     
     return objects
+
+
+def _parse_nlcs_row(line: str) -> list:
+    """Parse the quoted row format used by the NLCS 5.02 CSV export."""
+    parts = line.strip().replace(',""', '|||').split('|||')
+    fields = []
+    for part in parts:
+        field = part.strip()
+        while field.startswith('"') and field.endswith('"') and len(field) > 1:
+            field = field[1:-1]
+        fields.append(field.strip('"').replace('""', '"'))
+    return fields
 
 
 def format_for_lisp(objects: list) -> str:

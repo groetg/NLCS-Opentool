@@ -26,6 +26,21 @@ _LW_MAP = {
 }
 
 
+def get_objecttabel_path(discipline: str) -> str:
+    """Find the published object table for a hoofdgroep code."""
+    if not os.path.exists(_TABLE_DIR):
+        return ""
+    prefix = f"5.02-Objectentabel-{discipline}-"
+    matches = sorted(
+        fname for fname in os.listdir(_TABLE_DIR)
+        if fname.startswith(prefix) and fname.endswith(".csv")
+    )
+    if not matches:
+        exact = os.path.join(_TABLE_DIR, f"5.02-Objectentabel-{discipline}.csv")
+        return exact if os.path.exists(exact) else ""
+    return os.path.join(_TABLE_DIR, matches[0])
+
+
 def get_nlcs_data_path(relative: str) -> str:
     """Return full path to NLCS data file."""
     return os.path.join(_NLCS_DATA_DIR, relative)
@@ -50,10 +65,9 @@ def parse_objecttabel(csv_path: str) -> list[dict]:
     # First row is header, but format is complex due to quoted fields
     # Format: "hoofdgroep,""id_nummer"",""omschrijving"",... etc"
     with open(csv_path, "r", encoding="utf-8") as f:
-        reader = csv.reader(f, quotechar='"')
-        next(reader)  # skip header
-        
-        for row in reader:
+        next(f)  # skip header
+        for line in f:
+            row = _parse_nlcs_row(line)
             if len(row) < 35:
                 continue
             try:
@@ -61,11 +75,11 @@ def parse_objecttabel(csv_path: str) -> list[dict]:
                     "hoofdgroep": row[0].strip(),
                     "id": row[1].strip(),
                     "omschrijving": row[2].strip(),
-                    "kl_b": _int_safe(row[9]),
+                    "kl_b": _int_safe(row[7]),
                     "kl_n": row[17].strip() if len(row) > 17 else "",
                     "kl_t": row[25].strip() if len(row) > 25 else "",
                     "kl_v": row[33].strip() if len(row) > 33 else "",
-                    "lw_b": _float_safe(row[8]),
+                    "lw_b": _float_safe(row[6]),
                     "lw_n": row[16].strip() if len(row) > 16 else "0.25",
                     "lw_t": row[24].strip() if len(row) > 24 else "0.25",
                     "lw_v": row[32].strip() if len(row) > 32 else "0.25",
@@ -79,6 +93,19 @@ def parse_objecttabel(csv_path: str) -> list[dict]:
             except (IndexError, ValueError):
                 continue
     return objects
+
+
+def _parse_nlcs_row(line: str) -> list[str]:
+    """Parse the quoted row format used by the NLCS 5.02 CSV export."""
+    parts = line.strip().replace(',""', '|||').split('|||')
+    fields = []
+    for part in parts:
+        field = part.strip()
+        while field.startswith('"') and field.endswith('"') and len(field) > 1:
+            field = field[1:-1]
+        field = field.strip('"').replace('""', '"')
+        fields.append(field)
+    return fields
 
 
 def _int_safe(s: str) -> Optional[int]:
@@ -122,7 +149,7 @@ def load_nlcs_layers(disciplines: list[str] = None, target_layer_prefix: str = "
     layers_created = 0
 
     for disc in disciplines:
-        csv_file = os.path.join(_TABLE_DIR, f"5.02-Objectentabel-{disc}.csv")
+        csv_file = get_objecttabel_path(disc)
         if not os.path.exists(csv_file):
             continue
 
@@ -290,7 +317,7 @@ def get_all_disciplines() -> list[str]:
     for fname in os.listdir(_TABLE_DIR):
         if fname.startswith("5.02-Objectentabel-") and fname.endswith(".csv"):
             # Extract code between last dash and .csv
-            code = fname.replace("5.02-Objectentabel-", "").replace(".csv", "")
+            code = fname.replace("5.02-Objectentabel-", "").split("-", 1)[0]
             disciplines.append(code)
     return sorted(disciplines)
 
@@ -304,7 +331,7 @@ def debug_dump_disciplines():
 
 def debug_dump_layers(discipline: str, limit: int = 10):
     """Print first N layers for a discipline."""
-    csv_path = os.path.join(_TABLE_DIR, f"5.02-Objectentabel-{discipline}.csv")
+    csv_path = get_objecttabel_path(discipline)
     objects = parse_objecttabel(csv_path)
     print(f"Beschikbare objecten in {discipline} ({len(objects)} totaal):")
     for obj in objects[:limit]:
@@ -321,7 +348,7 @@ if __name__ == "__main__":
     debug_dump_disciplines()
     print()
     for disc in ["VH", "RI", "KL", "GR"]:
-        csv_path = os.path.join(_TABLE_DIR, f"5.02-Objectentabel-{disc}.csv")
+        csv_path = get_objecttabel_path(disc)
         if os.path.exists(csv_path):
             print(f"\n{disc}:")
             debug_dump_layers(disc, 5)

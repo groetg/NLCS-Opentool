@@ -51,11 +51,57 @@
   (action_tile "status_temporary" "(nlcs_set_status \"Tijdelijk\")")
   (action_tile "btn_create" "(nlcs_create_layer)")
   (action_tile "btn_draw" "(nlcs_start_drawing)")
+  (action_tile "btn_settings" "(done_dialog 2)")
   (action_tile "btn_cancel" "(done_dialog 0)")
   
   ; Show dialog
-  (start_dialog)
+  (setq dialog_result (start_dialog))
   (unload_dialog dcl_id)
+  (if (= dialog_result 2)
+    (progn
+      (nlcs_show_settings)
+      (C:NLCS)
+    )
+  )
+)
+
+(defun nlcs_show_settings ( / settings_id disciplines codes selected version_result )
+  (setq settings_id (load_dialog (strcat *nlcs-home* "/nlcs.dcl")))
+  (if (and settings_id (>= settings_id 0) (new_dialog "nlcs_settings" settings_id))
+    (progn
+      (setq disciplines
+        (list
+          (cons "AL" "Algemeen") (cons "AM" "Assen en metrering")
+          (cons "BC" "Betonconstructies") (cons "BV" "Bermbeveiliging")
+          (cons "FC" "Funderingsconstructies") (cons "FV" "Faunavoorzieningen")
+          (cons "GC" "Grondkerende constructies") (cons "GK" "Grondkeringen")
+          (cons "GR" "Groen") (cons "GW" "Grondwerken")
+          (cons "HU" "Hulpconstructies") (cons "IE" "Inrichtingselementen")
+          (cons "IV" "Installaties Vaarweg") (cons "IW" "Installaties Wegen")
+          (cons "KC" "Kunststofconstructies") (cons "KG" "Kadastrale grenzen")
+          (cons "KL" "Kabels en leidingen") (cons "KW" "Kunstwerken")
+          (cons "MC" "Mechanische constructies") (cons "MO" "Milieuonderzoek")
+          (cons "MW" "Metselwerk") (cons "OB" "Oever- en bodembescherming")
+          (cons "OG" "Ondergrond") (cons "OV" "Openbare verlichting")
+          (cons "RI" "Riolering") (cons "SC" "Staalconstructies")
+          (cons "VH" "Verhardingen") (cons "VV" "Verkeersmaatregelen Vaarweg")
+          (cons "VW" "Verkeersmaatregelen Weg") (cons "WH" "Waterhuishouding")
+          (cons "ZZ" "Diversen")
+        )
+      )
+      (setq codes (mapcar 'car disciplines))
+      (start_list "default_discipline")
+      (foreach discipline disciplines (add_list (cdr discipline)))
+      (end_list)
+      (set_tile "default_discipline" "0")
+      (action_tile "settings_save"
+        "(setq *nlcs-version* \"5.02\") (setq *nlcs-default-code* (nth (fix (atof (get_tile \"default_discipline\"))) codes)) (done_dialog 1)")
+      (action_tile "settings_cancel" "(done_dialog 0)")
+      (setq version_result (start_dialog))
+      (unload_dialog settings_id)
+    )
+    (alert "NLCS: instellingenvenster kon niet worden geladen.")
+  )
 )
 
 ; Initialize discipline list

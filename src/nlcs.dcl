@@ -47,6 +47,40 @@ nlcs_main : dialog {
     alignment = centered;
     : button { key = "btn_create"; label = "Laag aanmaken"; is_default = true; }
     : button { key = "btn_draw"; label = "Tekenen"; is_enabled = false; }
+    : button { key = "btn_settings"; label = "Instellingen"; }
     : button { key = "btn_cancel"; label = "Sluiten"; is_cancel = true; }
+  }
+}
+
+nlcs_settings : dialog {
+  label = "NLCS Opentool - Instellingen";
+  : boxed_column {
+    label = "NLCS-versie";
+    : popup_list {
+      key = "nlcs_version";
+      label = "Versie:";
+      list = "NLCS 5.02 (NLCS 5)";
+      value = "0";
+    }
+  }
+  spacer;
+  : boxed_column {
+    label = "Voorkeursdiscipline";
+    : popup_list {
+      key = "default_discipline";
+      label = "Discipline:";
+      width = 36;
+    }
+  }
+  spacer;
+  : text {
+    label = "De actuele meegeleverde dataset is NLCS 5.02.";
+    width = 50;
+  }
+  spacer;
+  : row {
+    alignment = centered;
+    : button { key = "settings_save"; label = "Opslaan"; is_default = true; }
+    : button { key = "settings_cancel"; label = "Annuleren"; is_cancel = true; }
   }
 }

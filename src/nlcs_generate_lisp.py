@@ -51,8 +51,8 @@ def parse_nlcs_csv(csv_path: str) -> list:
             if len(fields) < 35:
                 continue
             try:
-                kl_b = fields[9].strip() if fields[9].strip() else "7"
-                lw_b = fields[8].strip() if fields[8].strip() else "0.25"
+                kl_b = fields[7].strip() if fields[7].strip() else "7"
+                lw_b = fields[6].strip() if fields[6].strip() else "0.25"
                 lt_b = fields[12].strip() if fields[12].strip() else "CONTINUOUS"
                 obj = {
                     "hoofdgroep": fields[0],
