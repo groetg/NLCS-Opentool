@@ -45,6 +45,8 @@
   ; Action callbacks
   (action_tile "discipline_list" "(nlcs_on_discipline_changed)")
   (action_tile "layer_list" "(nlcs_on_layer_selected)")
+  (action_tile "object_type" "(nlcs_object_type_changed)")
+  (action_tile "text_height" "(nlcs_object_type_changed)")
   (action_tile "status_existing" "(nlcs_set_status \"Bestaand\")")
   (action_tile "status_new" "(nlcs_set_status \"Nieuw\")")
   (action_tile "status_delete" "(nlcs_set_status \"Verwijderen\")")
@@ -160,39 +162,45 @@
   (if disc_code
     (progn
       (setq *nlcs-current-code* disc_code)
-      (setq *nlcs-parent-stack* (list))
-      (setq *nlcs-current-parent* "")
-      (nlcs_show_children "")
+      (setq *nlcs-expanded* (list))
+      (nlcs_render_tree)
     )
   )
 )
 
-(defun nlcs_show_children (parent / data layer children has_children label candidate)
+(defun nlcs_render_tree ( / data )
   (setq data (assoc *nlcs-current-code* *nlcs-layers*))
-  (setq children (list))
-  (if data
-    (foreach layer (nth 2 data)
-      (if (= (nth 5 layer) parent)
-        (setq children (append children (list layer)))
-      )
-    )
-  )
-  (setq *nlcs-current-items* children)
+  (setq *nlcs-current-items* (list))
   (start_list "layer_list")
-  (if (> (length *nlcs-parent-stack*) 0) (add_list "<-- Terug"))
-  (foreach layer children
-    (setq has_children nil)
-    (foreach candidate (nth 2 data)
-      (if (= (nth 5 candidate) (nth 0 layer)) (setq has_children T))
-    )
-    (setq label (if has_children "+ " "  "))
-    (add_list (strcat label (nth 1 layer)))
-  )
+  (if data (nlcs_render_children "" 0 (nth 2 data)))
   (end_list)
   (set_tile "layer_list" "0")
   ; Only display the first item's properties. Do not invoke the selection
   ; callback here: doing so recursively opened every child level.
-  (if (> (length children) 0) (nlcs_set_layer_fields (car children)))
+  (if (> (length *nlcs-current-items*) 0)
+    (nlcs_set_layer_fields (car *nlcs-current-items*))
+  )
+)
+
+(defun nlcs_render_children (parent depth all_layers / layer candidate child_count marker indent)
+  (foreach layer all_layers
+    (if (= (nth 5 layer) parent)
+      (progn
+        (setq child_count 0)
+        (foreach candidate all_layers
+          (if (= (nth 5 candidate) (nth 0 layer)) (setq child_count (1+ child_count)))
+        )
+        (setq marker (if (> child_count 0) (if (member (nth 0 layer) *nlcs-expanded*) "- " "+ ") "  "))
+        (setq indent "")
+        (repeat depth (setq indent (strcat indent "  ")))
+        (add_list (strcat indent marker (nth 1 layer)))
+        (setq *nlcs-current-items* (append *nlcs-current-items* (list layer)))
+        (if (member (nth 0 layer) *nlcs-expanded*)
+          (nlcs_render_children (nth 0 layer) (1+ depth) all_layers)
+        )
+      )
+    )
+  )
 )
 
 ; Get layer names from the generated NLCS data.
@@ -226,27 +234,19 @@
   (if *nlcs-current-layer* (nlcs_set_layer_fields *nlcs-current-layer*))
 )
 
-(defun nlcs_on_layer_selected ( / index data layer)
+(defun nlcs_on_layer_selected ( / index layer)
   (setq index (fix (atof (get_tile "layer_list"))))
-  (if (and (> (length *nlcs-parent-stack*) 0) (= index 0))
+  (setq layer (nth index *nlcs-current-items*))
+  (if layer
     (progn
-      (setq *nlcs-current-parent* (car *nlcs-parent-stack*))
-      (setq *nlcs-parent-stack* (cdr *nlcs-parent-stack*))
-      (nlcs_show_children *nlcs-current-parent*)
-    )
-    (progn
-      (if (> (length *nlcs-parent-stack*) 0) (setq index (1- index)))
-      (setq layer (nth index *nlcs-current-items*))
-      (if layer
+      (nlcs_set_layer_fields layer)
+      (if (nlcs_has_children (nth 0 layer))
         (progn
-          (if (nlcs_has_children (nth 0 layer))
-            (progn
-              (setq *nlcs-parent-stack* (cons (if *nlcs-current-parent* *nlcs-current-parent* "") *nlcs-parent-stack*))
-              (setq *nlcs-current-parent* (nth 0 layer))
-              (nlcs_show_children *nlcs-current-parent*)
-            )
-            (nlcs_set_layer_fields layer)
+          (if (member (nth 0 layer) *nlcs-expanded*)
+            (setq *nlcs-expanded* (vl-remove (nth 0 layer) *nlcs-expanded*))
+            (setq *nlcs-expanded* (cons (nth 0 layer) *nlcs-expanded*))
           )
+          (nlcs_render_tree)
         )
       )
     )
@@ -266,14 +266,34 @@
 
 (defun nlcs_set_layer_fields (layer)
   (setq *nlcs-current-layer* layer)
-  (set_tile "layer_name_edit" (nlcs_status_name (nth 1 layer)))
+  (setq *nlcs-current-base-name* (nth 1 layer))
   (set_tile "layer_color_edit" (itoa (nth 2 layer)))
   (set_tile "layer_weight_edit" (rtos (nth 3 layer) 2 2))
   (set_tile "layer_type_edit" (nth 4 layer))
+  (set_tile "object_type" "0")
+  (set_tile "text_height" "0")
+  (nlcs_refresh_layer_name)
 )
 
-(defun nlcs_status_name (name)
-  (strcat (if *nlcs-status-prefix* *nlcs-status-prefix* "N-") name)
+(defun nlcs_object_type_changed ( / choice )
+  (nlcs_refresh_layer_name)
+)
+
+(defun nlcs_refresh_layer_name ( / suffix )
+  (setq suffix
+    (cond
+      ((= (get_tile "object_type") "0") "-G")
+      ((= (get_tile "object_type") "1") "-S")
+      ((= (get_tile "object_type") "2") "-M")
+      (T (strcat "-T" (nth (fix (atof (get_tile "text_height"))) (list "18" "25" "35" "50"))))
+    )
+  )
+  (if *nlcs-current-base-name*
+    (set_tile "layer_name_edit"
+      (strcat (if *nlcs-status-prefix* *nlcs-status-prefix* "N-")
+              *nlcs-current-base-name* suffix)
+    )
+  )
 )
 
 ; Legacy example mapping retained for compatibility with older drawings.

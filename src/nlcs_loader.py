@@ -90,7 +90,7 @@ def parse_objecttabel(csv_path: str) -> list[dict]:
                     "lt_n": row[20].strip() if len(row) > 20 else "CONTINUOUS",
                     "lt_t": row[28].strip() if len(row) > 28 else "CONTINUOUS",
                     "lt_v": row[36].strip() if len(row) > 36 else "CONTINUOUS",
-                    "element": row[40].strip() if len(row) > 40 else "",
+                    "element": row[34].strip() if len(row) > 34 else "",
                 }
                 objects.append(obj)
             except (IndexError, ValueError):

@@ -60,6 +60,7 @@ def parse_nlcs_csv(csv_path: str) -> list:
                     "omschrijving": fields[2],
                     "parent_id": fields[3].strip(),
                     "status": fields[4].strip(),
+                    "element": fields[34].strip() if len(fields) > 34 else "",
                     "kl_b": int(kl_b) if kl_b.isdigit() else 7,
                     "lw_b": float(lw_b.replace(",", ".")) if lw_b.replace(",", "1").replace(".", "1").isdigit() else 0.25,
                     "lt_b": lt_b if lt_b else "CONTINUOUS",
@@ -139,7 +140,7 @@ def generate_lisp(nlcs_base: str, output_path: str):
             # Format: (id omschrijving kleur lijngewicht lijntype)
             # Layer name format: HOOFGROEP-OMSCHRIJVING (zonder id)
             layer_name = f"{obj['hoofdgroep']}-{obj['omschrijving']}"
-            line = f'  (list "{obj["id"]}" "{layer_name}" {obj["kl_b"]} {obj["lw_b"]} "{obj["lt_b"]}" "{obj["parent_id"]}")'
+            line = f'  (list "{obj["id"]}" "{layer_name}" {obj["kl_b"]} {obj["lw_b"]} "{obj["lt_b"]}" "{obj["parent_id"]}" "{obj["element"]}")'
             lines.append(line)
         
         lines.append(")) *nlcs-layers*))")

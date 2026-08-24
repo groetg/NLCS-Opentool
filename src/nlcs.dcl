@@ -44,6 +44,18 @@ nlcs_main : dialog {
     : edit_box { key = "layer_color_edit"; label = "Kleur (ACI):"; width = 12; }
     : edit_box { key = "layer_weight_edit"; label = "Lijngewicht (mm):"; width = 12; }
     : edit_box { key = "layer_type_edit"; label = "Lijntype:"; width = 30; }
+    : popup_list {
+      key = "object_type";
+      label = "Objecttype:";
+      list = "Geometrie\nSymbool\nMaatvoering\nTekst";
+      value = "0";
+    }
+    : popup_list {
+      key = "text_height";
+      label = "Teksthoogte (mm):";
+      list = "18\n25\n35\n50";
+      value = "0";
+    }
   }
   spacer;
   : row {
