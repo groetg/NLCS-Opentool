@@ -16,3 +16,4 @@ htmlcov/
 *.so
 .DS_Store
 Thumbs.db
+BRXSDK_*.zip
