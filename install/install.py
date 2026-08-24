@@ -15,6 +15,8 @@ import os
 import sys
 import shutil
 import platform
+import argparse
+from pathlib import Path
 
 
 def get_bricscad_support_dir() -> str:
@@ -62,7 +64,32 @@ def get_bricscad_support_dir() -> str:
     
     elif system == "Linux":
         home = os.path.expanduser("~")
-        return os.path.join(home, ".bricscad", "BricsCAD_v24", "Support")
+        candidates = []
+        for root in (
+            os.path.join(home, "Bricsys", "BricsCAD"),
+            os.path.join(home, ".bricscad"),
+            os.path.join(home, "BricsCAD"),
+        ):
+            if not os.path.isdir(root):
+                continue
+            for version_name in os.listdir(root):
+                version_path = os.path.join(root, version_name)
+                if not os.path.isdir(version_path):
+                    continue
+                locale_paths = [version_path]
+                locale_paths.extend(
+                    os.path.join(version_path, name)
+                    for name in os.listdir(version_path)
+                    if os.path.isdir(os.path.join(version_path, name))
+                )
+                for locale_path in locale_paths:
+                    for support_name in ("Support", "support"):
+                        support = os.path.join(locale_path, support_name)
+                        if os.path.isdir(support):
+                            candidates.append(support)
+        if candidates:
+            return sorted(set(candidates), reverse=True)[0]
+        return os.path.join(home, "Bricsys", "BricsCAD", "V24", "en_US", "Support")
     
     else:
         # macOS
@@ -167,6 +194,21 @@ def install_symbols(nlcs_data_dir: str, support_dir: str) -> int:
     return count
 
 
+def install_plugin(script_dir: str, support_dir: str) -> int:
+    """Install the LISP plugin files in a dedicated support folder."""
+    plugin_src = Path(script_dir).parent / "src"
+    plugin_dst = Path(support_dir) / "NLCS-Opentool"
+    plugin_dst.mkdir(parents=True, exist_ok=True)
+
+    count = 0
+    for filename in ("nlcs_main.lsp", "nlcs_layers.lsp", "nlcs.dcl"):
+        source = plugin_src / filename
+        if source.exists():
+            shutil.copy2(source, plugin_dst / filename)
+            count += 1
+    return count
+
+
 def print_header():
     print()
     print("=" * 50)
@@ -183,6 +225,12 @@ def print_result(name: str, count: int):
 
 
 def main():
+    parser = argparse.ArgumentParser(description="Installeer NLCS Opentool voor BricsCAD")
+    parser.add_argument(
+        "--support-dir",
+        help="BricsCAD support directory; gebruik dit als automatische detectie niet lukt",
+    )
+    args = parser.parse_args()
     print_header()
     
     # Find NLCS data
@@ -202,14 +250,13 @@ def main():
         print("  OF clone de repo met submodule:")
         print("    git clone --recurse-submodules https://github.com/groetg/NLCS-Opentool.git")
         print()
-        input("Druk op Enter om af te sluiten...")
         sys.exit(1)
     
     print(f"  NLCS data: {nlcs_data_dir}")
     print()
     
     # Find BricsCAD support dir
-    support_dir = get_bricscad_support_dir()
+    support_dir = args.support_dir or get_bricscad_support_dir()
     print(f"  BricsCAD Support: {support_dir}")
     
     if not os.path.exists(support_dir):
@@ -217,7 +264,6 @@ def main():
         print("  [!] BricsCAD support directory niet gevonden.")
         print("  Heeft u BricsCAD al geïnstalleerd?")
         print()
-        input("Druk op Enter om af te sluiten...")
         sys.exit(1)
     
     print()
@@ -236,6 +282,9 @@ def main():
     
     symbols = install_symbols(nlcs_data_dir, support_dir)
     print_result("Symbolen (.dwg)", symbols)
+
+    plugin = install_plugin(os.path.dirname(os.path.abspath(__file__)), support_dir)
+    print_result("Plugin (.lsp/.dcl)", plugin)
     
     print()
     print("=" * 50)
@@ -244,7 +293,7 @@ def main():
     print()
     print("  Volgende stappen:")
     print("  1. Start BricsCAD opnieuw op")
-    print("  2. Typ APPLOAD → Add → src/__init__.py")
+    print("  2. Typ APPLOAD en laad NLCS-Opentool/nlcs_main.lsp")
     print("  3. Gebruik de NLCS toolbar om disciplines te laden")
     print()
     print("  Of draai de installatieknop in de plugin UI.")
@@ -252,9 +301,5 @@ def main():
     print("  Zie ook: https://github.com/groetg/NLCS-Opentool")
     print()
     
-    input("Druk op Enter om af te sluiten...")
-
-
 if __name__ == "__main__":
-    # If running from Windows Explorer (graphical), add input() pause at end
     main()

@@ -1,9 +1,22 @@
 ; NLCS Opentool - Main LISP Entry Point
-; Load via: (load "C:/Users/micro/NLCS-Opentool/src/nlcs_main.lsp")
+; Load via APPLOAD or: (load ".../NLCS-Opentool/nlcs_main.lsp")
+
+; Resolve files relative to this file so Windows and Linux use the same code.
+(setq *nlcs-home*
+  (if (findfile "nlcs_main.lsp")
+    (vl-filename-directory (findfile "nlcs_main.lsp"))
+    ""
+  )
+)
+(if (/= *nlcs-home* "")
+  (progn
+    (load (strcat *nlcs-home* "/nlcs_layers.lsp"))
+  )
+)
 
 (defun C:NLCS ( / )
   ; Show main NLCS dialog
-  (load_dialog "C:/Users/micro/NLCS-Opentool/src/nlcs.dcl")
+  (load_dialog (strcat *nlcs-home* "/nlcs.dcl"))
   (if (not (new_dialog "nlcs_main" dcl_id))
     (progn
       (alert "Kon NLCS dialoog niet laden.")
@@ -131,7 +144,7 @@
           ; For demo: show a few example layer names
           (set_tile "layer_list" 
             (strcat 
-              (nlcs_get_layers_for_disc disc_code)
+               (nlcs_get_generated_layers_for_disc disc_code)
             )
           )
         )
@@ -143,7 +156,23 @@
   )
 )
 
-; Get layer names for a discipline (placeholder - will be replaced by Python CSV reader)
+; Get layer names from the generated NLCS data.
+(defun nlcs_get_generated_layers_for_disc (disc_code / data layers result)
+  (setq data (assoc disc_code *nlcs-layers*))
+  (if data
+    (progn
+      (setq layers (nth 2 data))
+      (setq result "")
+      (foreach layer layers
+        (setq result (strcat result (nth 1 layer) "\n"))
+      )
+      result
+    )
+    "GEEN_LAGEN_BESCHIKBAAR"
+  )
+)
+
+; Legacy example mapping retained for compatibility with older drawings.
 (defun nlcs_get_layers_for_disc (disc_code / mapping)
   (setq mapping (list
     (cons "VH" (list 

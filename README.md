@@ -50,11 +50,20 @@ Ondersteunde NLCS hoofdgroepen:
    ```bash
    git clone --recurse-submodules https://github.com/groetg/NLCS-Opentool.git
    ```
-2. Dubbelklik `install/install.py` in Windows Verkenner
-   - Of: Right-click → "Openen met" → Python
-3. Python 3.7+ moet geïnstalleerd zijn op je Windows machine
+2. Windows: dubbelklik `install/install.py` in Windows Verkenner.
+3. Linux: voer vanuit de repository uit:
+   ```bash
+   python3 install/install.py
+   ```
+   Als BricsCAD niet automatisch gevonden wordt, geef de supportmap op:
+   ```bash
+   python3 install/install.py --support-dir "$HOME/Bricsys/BricsCAD/V24/en_US/Support"
+   ```
+4. Python 3.7+ moet geïnstalleerd zijn.
 
-Dit installeert alle NLCS resources naar je BricsCAD support directory.
+Dit installeert alle NLCS resources en de LISP-plugin naar je BricsCAD support directory.
+De Linux-gebruikersmap van BricsCAD staat normaal onder
+`~/Bricsys/BricsCAD/V<versie>/en_US/Support`.
 
 ### Handmatig via BricsCAD (voor developers)
 
@@ -62,8 +71,8 @@ Na de automatische installatie:
 
 1. Start BricsCAD opnieuw op
 2. Typ `APPLOAD` in de command line
-3. Klik **Add** → selecteer `src\__init__.py`
-4. Herstart BricsCAD
+3. Klik **Add** en selecteer `NLCS-Opentool/nlcs_main.lsp` uit de supportmap.
+4. Typ `NLCS` om de tool te starten.
 
 ## Gebruik
 
@@ -75,7 +84,7 @@ Na installatie verschijnt er een **NLCS** toolbar of ribbon tab met:
 
 ## Vereisten
 
-- BricsCAD v24 of hoger (getest op BricsCAD BIM en BricsCAD Pro)
+- BricsCAD v24 of hoger (Windows of Linux; Linux moet nog op de doelmachine worden gevalideerd)
 - NLCS versie 5.0.x
 
 ## Ontwikkeling
